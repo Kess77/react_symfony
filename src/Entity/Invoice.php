@@ -2,11 +2,34 @@
 
 namespace App\Entity;
 
-use App\Repository\InvoiceRepository;
 use Doctrine\ORM\Mapping as ORM;
+use App\Repository\InvoiceRepository;
+use ApiPlatform\Core\Annotation\ApiFilter;
+use ApiPlatform\Core\Annotation\ApiResource;
+use Symfony\Component\Serializer\Annotation\Groups;
+use ApiPlatform\Core\Bridge\Doctrine\Orm\Filter\OrderFilter;
+use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * @ORM\Entity(repositoryClass=InvoiceRepository::class)
+ * @ApiResource(
+ *   denormalizationContext={"disable_type_enforcement"=true},
+ *   normalizationContext={ "groups"={"invoices_read"}},
+ *   attributes={
+ *         "pagination_enabled"=true,
+ *         "pagination_items_per_page" = 20,
+ *         "order" = {"sentAt"="desc"}
+ *  },
+ *  subresourceOperations={
+ *  "api_customers_invoices_get_subresources"={
+ *      "normalization_context"={
+ *          "groups"={"invoices_subresource"}
+ *        }
+ *      }
+ *   }
+ *  
+ * )
+ *@ApiFilter(OrderFilter::class, properties ={"sentAt","amount"})
  */
 class Invoice
 {
@@ -14,34 +37,57 @@ class Invoice
      * @ORM\Id
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
+     * @groups({"invoices_read","customers_read","invoices_subresource"})
      */
     private $id;
 
     /**
      * @ORM\Column(type="float")
+     * @groups({"invoices_read","customers_read","invoices_subresource"})
+     * @Assert\Type(type="numeric",message="le format doit être numerique")
+     * 
      */
     private $amount;
 
     /**
      * @ORM\Column(type="datetime")
+     * @groups({"invoices_read","customers_read","invoices_subresource"})
+     * @Assert\DateTime(message="en format YYYY-MM-DD")
+     * @Assert\NotBlank(message ="le champs doit être obligatoire")
      */
     private $sentAt;
 
     /**
      * @ORM\Column(type="string", length=255)
+     * @groups({"invoices_read","customers_read","invoices_subresource"})
+     * @Assert\NotBlank(message ="le champs doit être obligatoire")
+     * @Assert\Choice(choices="SENT","PAID","CANCELED")
      */
     private $status;
 
     /**
      * @ORM\ManyToOne(targetEntity=Customer::class, inversedBy="invoices")
      * @ORM\JoinColumn(nullable=false)
+     * @groups({"invoices_read"})
+     * @Assert\NotBlank(message ="le champs doit être obligatoire")
      */
     private $customer;
 
     /**
      * @ORM\Column(type="integer")
+     * @Groups({"invoices_read","customers_read","invoices_subresource"})
      */
     private $chrono;
+
+    /**
+     * Permet récuperer le User à qui appartient la facture
+     * @groups({"invoices_read","invoices_subresource"})
+     * @return User
+     */
+    public function getUser(): ?User
+    {
+        return $this->customer->getUser();
+    }
 
     public function getId(): ?int
     {
@@ -53,7 +99,7 @@ class Invoice
         return $this->amount;
     }
 
-    public function setAmount(float $amount): self
+    public function setAmount( $amount): self
     {
         $this->amount = $amount;
 
@@ -65,7 +111,7 @@ class Invoice
         return $this->sentAt;
     }
 
-    public function setSentAt(\DateTimeInterface $sentAt): self
+    public function setSentAt( $sentAt): self
     {
         $this->sentAt = $sentAt;
 
@@ -101,7 +147,7 @@ class Invoice
         return $this->chrono;
     }
 
-    public function setChrono(int $chrono): self
+    public function setChrono($chrono): self
     {
         $this->chrono = $chrono;
 
