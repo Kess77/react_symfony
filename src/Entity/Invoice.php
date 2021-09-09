@@ -52,7 +52,6 @@ class Invoice
     /**
      * @ORM\Column(type="datetime")
      * @groups({"invoices_read","customers_read","invoices_subresource"})
-     * @Assert\DateTime(message="en format YYYY-MM-DD")
      * @Assert\NotBlank(message ="le champs doit être obligatoire")
      */
     private $sentAt;
